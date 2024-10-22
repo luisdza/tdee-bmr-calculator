@@ -20,7 +20,13 @@ ui <- fluidPage(
       numericInput("height", "Height (cm):", value = 170, min = 100, max = 250),
       numericInput("age", "Age (years):", value = 30, min = 10, max = 100),
       selectInput("gender", "Gender:", choices = c("Male", "Female")),
-      numericInput("activity", "Activity Level (1.2 - 2.5):", value = 1.5, min = 1.2, max = 2.5, step = 0.1),
+      selectInput("activity", "Activity Level:",
+                  choices = list("Sedentary (no exercise)" = 1.2, 
+                                  "Light activity (1-2x/week)" = 1.375, 
+                                  "Moderate activity (3-4x/week)" = 1.55, 
+                                  "High activity (4-5x/week)" = 1.725, 
+                                  "Very high activity (6-7x/week or physical job)" = 1.9,
+                                  "Athlete (10+ hours/week)" = 2.0)),
       actionButton("calculate", "Calculate", class = "btn-primary")
     ),
     
@@ -100,16 +106,20 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   observeEvent(input$calculate, {
-    weight <- input$weight
-    height <- input$height
-    age <- input$age
+    # Ensure all input values are available and numeric
+    req(input$weight, input$height, input$age, input$activity)
+
+    weight <- as.numeric(input$weight)
+    height <- as.numeric(input$height)
+    age <- as.numeric(input$age)
     gender <- input$gender
-    activity <- input$activity
-    
-    if (is.null(weight) || is.null(height) || is.null(age) || is.null(activity)) {
-      return()
+    activity <- as.numeric(input$activity)
+
+    # Check for NULL or non-numeric values
+    if (is.na(weight) || is.na(height) || is.na(age) || is.na(activity)) {
+      return()  # Do nothing if any value is missing or not numeric
     }
-    
+
     # Example calculation for BMR and TDEE using Harris-Benedict formula
     if (gender == "Male") {
       bmr_hb <- 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age)
@@ -117,11 +127,11 @@ server <- function(input, output) {
       bmr_hb <- 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
     }
     tdee_hb <- bmr_hb * activity
-    
+
     # Outputting values
     output$hb_bmr <- renderText({ round(bmr_hb, 2) })
     output$hb_tdee <- renderText({ round(tdee_hb, 2) })
-    
+
     # Placeholder values for other formulas (implement as needed)
     output$rs_bmr <- renderText({ round(bmr_hb * 0.98, 2) })
     output$rs_tdee <- renderText({ round(tdee_hb * 0.98, 2) })
@@ -131,11 +141,11 @@ server <- function(input, output) {
     output$kma_tdee <- renderText({ round(tdee_hb * 1.02, 2) })
     output$cunningham_bmr <- renderText({ round(bmr_hb * 1.05, 2) })
     output$cunningham_tdee <- renderText({ round(tdee_hb * 1.05, 2) })
-    
+
     # Average values
     output$average_bmr <- renderText({ round(mean(c(bmr_hb, bmr_hb * 0.98, bmr_hb * 0.95, bmr_hb * 1.02, bmr_hb * 1.05)), 2) })
     output$average_tdee <- renderText({ round(mean(c(tdee_hb, tdee_hb * 0.98, tdee_hb * 0.95, tdee_hb * 1.02, tdee_hb * 1.05)), 2) })
-    
+
     # Macros calculation (example based on average TDEE)
     average_tdee <- mean(c(tdee_hb, tdee_hb * 0.98, tdee_hb * 0.95, tdee_hb * 1.02, tdee_hb * 1.05))
     output$protein <- renderText({ round(average_tdee * 0.28 / 4, 2) })
